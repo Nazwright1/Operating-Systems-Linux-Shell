@@ -11,6 +11,7 @@
 const char* ash = "ash";
 int numArguments = 0;
 char home[FILENAME_MAX];
+int numCommands = 0;
 
 
 // print the current directory
@@ -43,10 +44,6 @@ void setHomeDirectory(){
    getcwd(home, sizeof(home));
 }
 
-
-
-
-
 // get a char* of commands from the prompt
 char* getCommands(){
   char* commandLine = (char*)malloc( FILENAME_MAX );
@@ -54,18 +51,32 @@ char* getCommands(){
   return commandLine;
 }
 
-//char** parseCommands(char* commands){
-  
- // char *prog = strtok(commands, " ");
- // char *tmp = prog;
- // while(tmp != NULL) {
-    
-   // tmp = strtok(NULL, " ");
-  //}
-//}
+char** vectToArray(std::vector<char*>argsVector){
+  char** argv = new char *[argsVector.size() + 1];
+  for (int k = 0; k < argsVector.size(); k++) {
+    argv[k] = argsVector[k];
+  }
+  argv[argsVector.size()] = NULL;
+  return argv;
+}
 
+std::vector<char*> parseCommands(char* commands){
+  std::vector<char*> arguments;
+  char *prog = strtok(commands, " ");
+  char *tmp = prog;
+  while(tmp != NULL) {
+    arguments.push_back(tmp);
+    tmp = strtok(NULL, " ");
+  }
 
-
+  if(!arguments.empty()) {
+  	numCommands = arguments.size();
+    return arguments;
+  }
+  else{
+    return std::vector<char*>();
+  }
+}
 
 int main(){
   char* current_directory = strdup(ash);
@@ -75,9 +86,8 @@ int main(){
      // need to free this once done.
      char* commands = getCommands();
      if(strlen(commands) != 0){
-     char* newhome = getDirectoryname(home);
-     std::cout << formatDirectory(newhome);
-       
+       std::vector<char*> commandsVector = parseCommands(commands);
+       char** linuxCommands = vectToArray(commandsVector);
      }
      else{
        // print the prompt
