@@ -16,8 +16,8 @@ int numCommands = 0;
 bool pathSet = false;
 std::vector<char*>paths;
 char* path;
-char* directory;
-
+char directory[FILENAME_MAX];
+int fds[2];
 // print the current directory
 void printPrompt(){
     std::cout<< directory << " >";
@@ -109,7 +109,6 @@ char* getExistingPath( std::vector<char*>searchPaths ){
   for( int i = 0; i < searchPaths.size(); i++ ){
     if( access(searchPaths.at(i) , X_OK ) == 0 ){
       existingpath = strdup( searchPaths.at(i) );
-      changeDirectory( dirname(searchPaths.at(i)) );
       break;
     }
   }
@@ -135,9 +134,8 @@ bool Exists( char* needle, std::vector<char*> haystack ){
 }
 
 int main(){
-  directory = strdup( ash );
+ strcat( directory, ash );
   while( 1 ){
-  	 setHomeDirectory();
      printPrompt();
      // need to free this once done.
      char* commands = getCommands();
@@ -179,12 +177,17 @@ int main(){
               continue;
              }
              else{
-               paths.push_back( linuxCommands[i] );
+               std:: cout << "Path added: " << linuxCommands[i] << "\n";
+               paths.push_back( linuxCommands[i]  );
              }
            }
          }
        }
+
        else{
+        if( pipe(fds) == -1 ){
+          perror( "Could not pipe" );
+        }
         pid_t kidpid = fork();
         if( kidpid < 0 ){
           perror( "Could not fork" );
@@ -203,15 +206,22 @@ int main(){
               strcat( temp, paths.at(i) );
               strcat( temp, linuxCommands[0] );
               executables.push_back(temp);
+              std::cout << temp << "\n";
             }
             // the existing search path out of all the possibilities
-            strcpy( linuxCommands[0] , getExistingPath( executables ) );
+            char* correctPath = getExistingPath( executables );
+            strcpy( linuxCommands[0] , correctPath );
+            close( fds[0] );
+            if ( write( fds[1], correctPath, sizeof( correctPath ) ) == -1 ){
+              perror( "Could not write" );
+            }
 
             //std::cout << dirname(linuxCommands[0]);
               
               //pipe the directory through to the parent and let them print it
-            
-             execv( linuxCommands[0], linuxCommands );
+             if ( execv( linuxCommands[0], linuxCommands ) == -1 ){
+              std::cout << "EXEC";
+             }
             //if( execv( linuxCommands[0], linuxCommands ) == -1 ){
               //std::cout << "Error execv";
            //}
@@ -225,7 +235,16 @@ int main(){
           if( waitpid( kidpid , 0, 0 ) < 0 ){
             return -1;
           }
+          char corrPath[FILENAME_MAX];
+          close( fds[1] );
+          if ( read( fds[0], corrPath, sizeof( corrPath ) ) == -1 ){
+              perror( "Could not write" );
+            }
+            strcpy( directory , ash );
+            strcat( directory, " " );
+            strcat( directory, dirname( corrPath ) );
         }
+        
        }
  
 
